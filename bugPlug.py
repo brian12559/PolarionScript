@@ -22,13 +22,14 @@ BUGZILLA_PRODUCT= "Red Hat Cluster Suite"
 BUGZILLA_PRODUCT= "test"
 BUGZILLA_VERSION = "13.0 (Queens)"
 POLARION_PRODUCT = "Polarion" #was openstack  this is going to have to be picked up from the Bugzilla ticket and then looked up
-#POLARION_VERSION = "Importer_2_0_11" not conencting to plans
 
-
+#conversion dictionaries, bugzilla:polarion
+SEV_DICT = {"urgent": "must_have", "high": "must_have", "medium": "should_have", "low": "nice_to_have", "unspecified": "will_not_have"}
+PRIOR_DICT = {"urgent": float(90.0), "high": float(70.0), "medium": float(50.0), "low": float(30.0), "unspecified": float(10.0)}
+PROJ_DICT = {"test": "Polarion", "Red Hat Cluster Suite": "RHELOpenStackPlatform"}
 
 class ConfigFileMissingException(Exception):
     pass
-
 
 def parse_config():
     conf_file = os.path.join(user.home, ".pylarion")
@@ -42,98 +43,6 @@ def parse_config():
         params_dict[params[0]] = params[1]
 
     return params_dict
-
-
-def convert_polarion_dfg(bug_dfg):
-    dfg_id = ""
-    if bug_dfg.startswith("DFG:Ceph"):
-        dfg_id = "24"
-    elif bug_dfg.startswith("DFG:Compute"):
-        dfg_id = "6"
-    elif bug_dfg.startswith("DFG:CloudApp"):
-        dfg_id = "23"
-    elif bug_dfg.startswith("DFG:Containers"):
-        dfg_id = "25"
-    elif bug_dfg.startswith("DFG:DF"):
-        dfg_id = "7"
-    elif bug_dfg.startswith("DFG:HardProv"):
-        dfg_id = "9"
-    elif bug_dfg.startswith("DFG:Infra"):
-        dfg_id = "5"
-    elif bug_dfg.startswith("DFG:MetMon"):
-        dfg_id = "27"
-    elif bug_dfg.startswith("DFG:NFV"):
-        dfg_id = "11"
-    elif bug_dfg.startswith("DFG:Networking"):
-        dfg_id = "10"
-    elif bug_dfg.startswith("DFG:ODL"):
-        dfg_id = "3"
-    elif bug_dfg.startswith("DFG:OVN"):
-        dfg_id = "17"
-    elif bug_dfg.startswith("DFG:OpsTools"):
-        dfg_id = "4"
-    elif bug_dfg.startswith("DFG:PIDONE"):
-        dfg_id = "19"
-    elif bug_dfg.startswith("DFG:ReleaseDelivery"):
-        dfg_id = "13"
-    elif bug_dfg.startswith("DFG:Security"):
-        dfg_id = "14"
-    elif bug_dfg.startswith("DFG:Storage"):
-        dfg_id = "15"
-    elif bug_dfg.startswith("DFG:Telemetry"):
-        dfg_id = "16"
-    elif bug_dfg.startswith("DFG:UI"):
-        dfg_id = "8"
-    elif bug_dfg.startswith("DFG:Upgrades"):
-        dfg_id = "22"
-    elif bug_dfg.startswith("DFG:Workflows"):
-        dfg_id = "28"
-    elif bug_dfg.startswith("DFG:OpenShiftonOpenStack"):
-        dfg_id = "26"
-    else:
-        dfg_id = ""
-
-    return dfg_id
-
-
-def convert_polarion_priority(bugzilla_priority):
-    priority = ''
-    if bugzilla_priority == "urgent":
-        priority = float(90.0)
-    elif bugzilla_priority == "high":
-        priority = float(70.0)
-    elif bugzilla_priority == "medium":
-        priority = float(50.0)
-    elif bugzilla_priority == "low":
-        priority = float(30.0)
-    elif bugzilla_priority == "unspecified":
-        priority = float(10.0)
-
-    return priority
-
-def convert_polarion_severity(bugzilla_severity):
-    severity = ""
-    if bugzilla_severity == "urgent":
-        severity = "must_have"
-    elif bugzilla_severity == "high":
-        severity = "must_have"
-    elif bugzilla_severity == "medium":
-        severity = "should_have"
-    elif bugzilla_severity == "low":
-        severity = "nice_to_have"
-    elif bugzilla_severity == "unspecified":
-        severity = "will_not_have"
-
-    return severity
-
-def convert_polarion_product(bugzilla_product):
-    severity = ""
-    if bugzilla_product == "test":
-        product = "Polarion"
-    elif bugzilla_product == "OpenStack":
-        severity = "OpenStack"
-
-    return product
 
 def get_bug_params(bug):
     named_parms = dict()
@@ -179,61 +88,36 @@ def get_rfes_from_bugzilla(bugs):
     
     #for for local testing
     username = "bmurray@redhat.com"
-    password = "XXXXXX"
+    password = "!BandG0916"
     if bugs == "":
         bugs = "1011755,1003044"
-
-  #  rhbugzilla = bugzilla.RHBugzilla()
-
+    
+    #connect to Bugzilla    
     bz_connection = bugzilla.RHBugzilla(url=BUGZILLA_SERVER)
     bz_connection.login(username,password)
     print "Bugzilla connection: " + str(bz_connection.logged_in)
 
     # Build RFE query
-    #all we need is the list of bugs to search for.  Need to get this in somehow. from config as command line, etc
     query = bz_connection.build_query(
         bug_id = bugs
     )
-
     bz_rfes = bz_connection.query(query)
-
     return bz_rfes, bz_connection
 
 def create_requirements(bz_rfes, bz_connection):
-    #not sure why 103?  seems like its just a counter
-    idx = 103
-
-    req_ids = list()
-
-    #huh?
-    # bz_rfe = bz_rfes[0]
-    #for x in range(103,127):
     for bz_rfe in bz_rfes:
-        #bz_rfe = bz_rfes[x]
-
-        bug_title, bug_product, named_parms, bug_description, bug_link, bug_id, bug_priority,bug_severity, bug_dfg = get_bug_params(bz_rfe)
+        bug_title, bug_product, named_parms, bug_description, bug_link, bug_id, bug_priority, bug_severity, bug_dfg = get_bug_params(bz_rfe)
         bug_title = "BZ_id=%s; %s" % (bug_id, bug_title)
-        print "\n%s - start bug %s" % (datetime.datetime.now(), idx),
-        idx +=1
+        print "\n%s - start bug %s" % (datetime.datetime.now(), bug_id),
         print '"{}"'.format(bug_link)
-
-            
         # Convert bugzilla to Polarion product and set
-        product = convert_polarion_product(bug_product)
+        product = PROJ_DICT[bug_product]
         if isRequirementInPolarion(bug_id, product) == False:
-
-            #TODO Convert bugzilla to Polarion priority and set
-            #named_parms["priority"] = convert_polarion_priority(bug_priority)
-
-            # Convert bugzilla to Polarion severity and set
-            named_parms["severity"] = convert_polarion_severity(bug_severity)
-
+            #convert args, for now leave out Priority
+            #named_parms["priority"] = PRIOR_DICT[bug_priority]
+            named_parms["severity"] = SEV_DICT[bug_severity]
             # Set Polarion requirement type
             named_parms["reqtype"] = "functional"
-            
-            #Cenvert DFG name from bugzilla to dfg_id in Polarion
-            #named_parms["d_f_g"] = convert_polarion_dfg(bug_dfg)
-
             #Get bug description from first comment and add to Polarion requirement
             desc = ""
             if bug_description:
@@ -266,7 +150,6 @@ def create_requirements(bz_rfes, bz_connection):
             #req_ids.append(req.work_item_id)
 
             print "%s - end bug: %s - %s" % (datetime.datetime.now(), req.work_item_id, link.uri)
-
 
 if __name__ == "__main__":
     
