@@ -177,9 +177,9 @@ def get_rfes_from_bugzilla(bugs):
     username = user_params.get("user") + "@redhat.com"
     password = user_params.get("password")
     
-    #for my testing
+    #for for local testing
     username = "bmurray@redhat.com"
-    password = "!BandG0916"
+    password = "XXXXXX"
     if bugs == "":
         bugs = "1011755,1003044"
 
