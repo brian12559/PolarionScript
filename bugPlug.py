@@ -26,7 +26,25 @@ POLARION_PRODUCT = "Polarion" #was openstack  this is going to have to be picked
 #conversion dictionaries, bugzilla:polarion
 SEV_DICT = {"urgent": "must_have", "high": "must_have", "medium": "should_have", "low": "nice_to_have", "unspecified": "will_not_have"}
 PRIOR_DICT = {"urgent": float(90.0), "high": float(70.0), "medium": float(50.0), "low": float(30.0), "unspecified": float(10.0)}
-PROJ_DICT = {"test": "Polarion", "Red Hat Cluster Suite": "RHELOpenStackPlatform"}
+PROJ_DICT = {"test": "Polarion",
+    "Red Hat Cluster Suite": "RHELOpenStackPlatform",
+    "Container Development Kit": "CMP",
+    "Container Native Vitualization": "CNV",
+    "Red Hat Virtualization": "RHEVM3",
+    "OVirt": "RHEVM3",
+    "OpenShift Container platform": "OSE",
+    "Openshift Online": "OSOP",
+    "Red Hat Ceph Storage": "CEPH",
+    "Red Hat CloudForms Management Engine": "CloudForms",
+    "Red Hat Enterprise Linux 5": "RedHatEnterpriseLinux7",
+    "Red Hat Enterprise Linux 7": "RedHatEnterpriseLinux7",
+    "Red Hat Enterprise Linux 8": "RedHatEnterpriseLinux7",
+    "Red Hat Software Collection": "RedHatEnterpriseLinux7",
+    "Red Hat Enterprise Linux 6": "RHEL6",
+    "Red Hat Gluster Storage": "RHG3",
+    "Red Hat OpenStack": "RHELOpenStackPlatform",
+    "Red Hat Quickstart Cloud Installer": "QuickstartCloudInstaller",
+    "Red Hat Satellite 6": "RHSAT6"}
 
 class ConfigFileMissingException(Exception):
     pass
@@ -62,6 +80,8 @@ def get_bug_params(bug):
     return bug_summary, product, named_parms, description, bug.weburl, bug_id, priority, severity, dfg
 
 def isRequirementInPolarion(bug_id, bug_project):
+    #i was wrong you can search on hyperlink like this
+    #select tc.c_id from WORKITEM tc inner join PROJECT on PROJECT.C_URI = tc.FK_URI_PROJECT left join struct_workitem_hyperlinks hlink on tc.c_uri=hlink.fk_uri_p_workitem where PROJECT.C_ID = 'Polarion' and tc.C_TYPE = 'requirement' and hlink.c_url LIKE '%1011755%'
     query_str = "SELECT tc.c_uri from WORKITEM tc join project proj on proj.c_uri=tc.fk_uri_project where proj.c_id='%s' and tc.c_title like ('BZ_id=%s%%') and tc.c_type = 'requirement'" % (bug_project, bug_id)
     for i in range(0, 10):  # WA for Polarion disconnection from time to time
         try:
@@ -88,9 +108,9 @@ def get_rfes_from_bugzilla(bugs):
     
     #for for local testing
     username = "bmurray@redhat.com"
-    password = "XXXXX"
+    password = "!BandG0916"
     if bugs == "":
-        bugs = "1011755,1003044"
+        bugs = "1517272"#,1011755,1003044"
     
     #connect to Bugzilla    
     bz_connection = bugzilla.RHBugzilla(url=BUGZILLA_SERVER)
@@ -146,6 +166,7 @@ def create_requirements(bz_rfes, bz_connection):
 
             #Get requirement ID and update bugzilla extrenal link tracker
             #gonna need to enable this back, but need a test project first
+            #[Anjali] one last step here is 'set 'qe-test-coverage' flag in Bugzilla (to show that the bugzilla has a test coverage)
             #bz_connection.add_external_tracker(str(bz_rfe.id), str(req.work_item_id), ext_type_description="Polarion Requirement")
             #req_ids.append(req.work_item_id)
 
