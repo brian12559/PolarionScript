@@ -49,6 +49,58 @@ PROJ_DICT = {"test": "Polarion",
 class ConfigFileMissingException(Exception):
     pass
 
+
+def convert_polarion_dfg(bug_dfg):
+    dfg_id = ""
+    if bug_dfg.startswith("DFG:Ceph"):
+        dfg_id = "24"
+    elif bug_dfg.startswith("DFG:Compute"):
+        dfg_id = "6"
+    elif bug_dfg.startswith("DFG:CloudApp"):
+        dfg_id = "23"
+    elif bug_dfg.startswith("DFG:Containers"):
+        dfg_id = "25"
+    elif bug_dfg.startswith("DFG:DF"):
+        dfg_id = "7"
+    elif bug_dfg.startswith("DFG:HardProv"):
+        dfg_id = "9"
+    elif bug_dfg.startswith("DFG:Infra"):
+        dfg_id = "5"
+    elif bug_dfg.startswith("DFG:MetMon"):
+        dfg_id = "27"
+    elif bug_dfg.startswith("DFG:NFV"):
+        dfg_id = "11"
+    elif bug_dfg.startswith("DFG:Networking"):
+        dfg_id = "10"
+    elif bug_dfg.startswith("DFG:ODL"):
+        dfg_id = "3"
+    elif bug_dfg.startswith("DFG:OVN"):
+        dfg_id = "17"
+    elif bug_dfg.startswith("DFG:OpsTools"):
+        dfg_id = "4"
+    elif bug_dfg.startswith("DFG:PIDONE"):
+        dfg_id = "19"
+    elif bug_dfg.startswith("DFG:ReleaseDelivery"):
+        dfg_id = "13"
+    elif bug_dfg.startswith("DFG:Security"):
+        dfg_id = "14"
+    elif bug_dfg.startswith("DFG:Storage"):
+        dfg_id = "15"
+    elif bug_dfg.startswith("DFG:Telemetry"):
+        dfg_id = "16"
+    elif bug_dfg.startswith("DFG:UI"):
+        dfg_id = "8"
+    elif bug_dfg.startswith("DFG:Upgrades"):
+        dfg_id = "22"
+    elif bug_dfg.startswith("DFG:Workflows"):
+        dfg_id = "28"
+    elif bug_dfg.startswith("DFG:OpenShiftonOpenStack"):
+        dfg_id = "26"
+    else:
+        dfg_id = ""
+
+    return dfg_id
+
 def parse_config():
     conf_file = os.path.join(user.home, ".pylarion")
     if not os.path.isfile(conf_file):
@@ -74,7 +126,6 @@ def get_bug_params(bug):
         comment = bug.getcomments()[0]
         # the description is always the first comment.
         description = comment["text"]
-
     dfg = bug.internal_whiteboard
 
     return bug_summary, product, named_parms, description, bug.weburl, bug_id, priority, severity, dfg
@@ -110,7 +161,7 @@ def get_rfes_from_bugzilla(bugs):
     username = "bmurray@redhat.com"
     password = "!BandG0916"
     if bugs == "":
-        bugs = "1517272"#,1011755,1003044"
+        bugs = "1517272" #,1011755,1003044" #1517272"#,
     
     #connect to Bugzilla    
     bz_connection = bugzilla.RHBugzilla(url=BUGZILLA_SERVER)
@@ -120,7 +171,7 @@ def get_rfes_from_bugzilla(bugs):
     # Build RFE query
     query = bz_connection.build_query(
         bug_id = bugs
-    )
+     )
     bz_rfes = bz_connection.query(query)
     return bz_rfes, bz_connection
 
@@ -138,6 +189,9 @@ def create_requirements(bz_rfes, bz_connection):
             named_parms["severity"] = SEV_DICT[bug_severity]
             # Set Polarion requirement type
             named_parms["reqtype"] = "functional"
+            
+            #Convert DFG name from bugzilla to dfg_id in Polarion
+            named_parms["d_f_g"] = convert_polarion_dfg(bug_dfg)
             #Get bug description from first comment and add to Polarion requirement
             desc = ""
             if bug_description:
@@ -152,7 +206,7 @@ def create_requirements(bz_rfes, bz_connection):
 
             for i in range(0,10): #WA for Polarion disconnection from time to time
                 try:
-                    req = Requirement.create(project_id=POLARION_PRODUCT, title=bug_title, desc=desc, **named_parms)
+                    req = Requirement.create(project_id=product, title=bug_title, desc=desc, **named_parms)
                     break
                 except Exception as inst:
                     print inst
@@ -164,12 +218,14 @@ def create_requirements(bz_rfes, bz_connection):
             req.customerscenario = True
             req.update()
 
-            #Get requirement ID and update bugzilla extrenal link tracker
-            #gonna need to enable this back, but need a test project first
             #[Anjali] one last step here is 'set 'qe-test-coverage' flag in Bugzilla (to show that the bugzilla has a test coverage)
-            #bz_connection.add_external_tracker(str(bz_rfe.id), str(req.work_item_id), ext_type_description="Polarion Requirement")
-            #req_ids.append(req.work_item_id)
-
+            bz_connection.add_external_tracker(str(bz_rfe.id), str(req.work_item_id), ext_type_description="Polarion Requirement")
+            custflag = {'qe_test_coverage': '-'}
+            #doesn't matter if we send bugs as a list or not as the method fixes it anyway  
+            #this currently does not work it returns an error, so I am disabling it
+            #Fault -32000: 'Not an ARRAY reference at /var/www/html/bugzilla/Bugzilla/WebService/Util.pm line 44.\n
+            #bz_connection.update_flags([bug_id], custflag)
+            
             print "%s - end bug: %s - %s" % (datetime.datetime.now(), req.work_item_id, link.uri)
 
 if __name__ == "__main__":
@@ -182,7 +238,5 @@ if __name__ == "__main__":
     print "Number of RFEs in " + BUGZILLA_VERSION + ": %s" %bz_rfes.__len__()
     create_requirements(bz_rfes, bz_connection)
     
-    
-    
-    
+       
     
